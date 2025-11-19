@@ -1,8 +1,8 @@
 // PiP.m
 // video_player_avfoundation – iOS PiP helper
 
-#import "./include/video_player_avfoundation/PiP.h"
-#import "./include/video_player_avfoundation/FVPVideoPlayer.h"
+#import "PiP.h"
+#import "FVPVideoPlayer.h"
 
 @interface PiP ()
 
