@@ -3,6 +3,7 @@
 
 #import "PiP.h"
 #import "FVPVideoPlayer.h"
+#import <AVKit/AVKit.h>
 
 @interface PiP ()
 
@@ -24,22 +25,29 @@
 }
 
 - (BOOL)isPiPAvailable {
-  return [AVPictureInPictureController isPictureInPictureSupported];
+  BOOL supported = [AVPictureInPictureController isPictureInPictureSupported];
+  NSLog(@"[PiP] isPiPAvailable = %@", supported ? @"YES" : @"NO");
+  return supported;
 }
 
 - (BOOL)isPiPActive {
-  return self.pipController.isPictureInPictureActive;
+  BOOL active = self.pipController.isPictureInPictureActive;
+  NSLog(@"[PiP] isPiPActive = %@", active ? @"YES" : @"NO");
+  return active;
 }
 
 - (void)attachToPlayer:(FVPVideoPlayer *)player {
   if (!player) {
+    NSLog(@"[PiP] attachToPlayer: player is nil");
     return;
   }
+  NSLog(@"[PiP] attachToPlayer: %@", player);
   self.currentPlayer = player;
   [self configureControllerForCurrentPlayer];
 }
 
 - (void)detachCurrentPlayer {
+  NSLog(@"[PiP] detachCurrentPlayer");
   if (self.isPiPActive) {
     [self stopPiP];
   }
@@ -50,11 +58,18 @@
 
 - (void)configureControllerForCurrentPlayer {
   if (!self.currentPlayer) {
+    NSLog(@"[PiP] configureControllerForCurrentPlayer: currentPlayer is nil");
+    return;
+  }
+
+  if (![AVPictureInPictureController isPictureInPictureSupported]) {
+    NSLog(@"[PiP] configure: PiP not supported on this device");
     return;
   }
 
   AVPlayer *player = self.currentPlayer.player;
   if (!player) {
+    NSLog(@"[PiP] configure: player.player is nil");
     return;
   }
 
@@ -62,36 +77,71 @@
   if (self.pipLayer == nil) {
     self.pipLayer = [AVPlayerLayer playerLayerWithPlayer:player];
     self.pipLayer.videoGravity = AVLayerVideoGravityResizeAspect;
+
+    // 一応フレームも入れておく（ゼロサイズだと不具合出るデバイスがある）
+    UIScreen *screen = [UIScreen mainScreen];
+    self.pipLayer.frame = screen.bounds;
   } else {
     self.pipLayer.player = player;
   }
 
-  AVPictureInPictureControllerContentSource *contentSource =
-      [[AVPictureInPictureControllerContentSource alloc] initWithPlayerLayer:self.pipLayer];
+  if (self.pipController == nil) {
+    AVPictureInPictureControllerContentSource *contentSource =
+        [[AVPictureInPictureControllerContentSource alloc] initWithPlayerLayer:self.pipLayer];
 
-  self.pipController =
-      [[AVPictureInPictureController alloc] initWithContentSource:contentSource];
-  self.pipController.delegate = self;
+    self.pipController =
+        [[AVPictureInPictureController alloc] initWithContentSource:contentSource];
+    self.pipController.delegate = self;
+
+    NSLog(@"[PiP] configure: created new PiP controller");
+  } else {
+    NSLog(@"[PiP] configure: reuse existing PiP controller");
+  }
 }
 
 - (void)startPiP {
+  NSLog(@"[PiP] startPiP called");
+
   if (!self.currentPlayer) {
+    NSLog(@"[PiP] startPiP: currentPlayer is nil");
     return;
   }
-  if (!self.pipController) {
+
+  if (![AVPictureInPictureController isPictureInPictureSupported]) {
+    NSLog(@"[PiP] startPiP: PiP not supported");
+    return;
+  }
+
+  if (self.pipController == nil) {
     [self configureControllerForCurrentPlayer];
   }
-  if (!self.pipController || !self.pipController.isPictureInPicturePossible) {
+
+  if (self.pipController == nil) {
+    NSLog(@"[PiP] startPiP: pipController is still nil after configure");
     return;
   }
-  if (!self.pipController.isPictureInPictureActive) {
-    [self.pipController startPictureInPicture];
-  }
+
+  NSLog(@"[PiP] startPiP: possible=%@ active=%@",
+        self.pipController.isPictureInPicturePossible ? @"YES" : @"NO",
+        self.pipController.isPictureInPictureActive ? @"YES" : @"NO");
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (!self.pipController.isPictureInPictureActive) {
+      [self.pipController startPictureInPicture];
+      NSLog(@"[PiP] startPiP: startPictureInPicture called");
+    } else {
+      NSLog(@"[PiP] startPiP: already active");
+    }
+  });
 }
 
 - (void)stopPiP {
+  NSLog(@"[PiP] stopPiP called");
   if (self.pipController.isPictureInPictureActive) {
     [self.pipController stopPictureInPicture];
+    NSLog(@"[PiP] stopPiP: stopPictureInPicture called");
+  } else {
+    NSLog(@"[PiP] stopPiP: not active");
   }
 }
 
@@ -99,21 +149,7 @@
 
 - (void)pictureInPictureControllerDidStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
-  // 必要ならここでイベントを飛ばす
+  NSLog(@"[PiP] didStartPictureInPicture");
 }
 
-- (void)pictureInPictureControllerDidStopPictureInPicture:
-    (AVPictureInPictureController *)pictureInPictureController {
-  // 必要ならここでイベントを飛ばす
-}
-
-- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController
-restoreUserInterfaceForPictureInPictureStopWithCompletionHandler:
-    (void (^)(BOOL restored))completionHandler {
-  // Flutter 側で UI を復元するので、ここでは NO を返して完了だけ知らせる
-  if (completionHandler) {
-    completionHandler(NO);
-  }
-}
-
-@end
+- (void)pictureInPictureContro
