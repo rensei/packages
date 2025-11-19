@@ -48,6 +48,9 @@
 @property(nonatomic, strong) id<FVPAVFactory> avFactory;
 // TODO(stuartmorgan): Decouple identifiers for platform views and texture views.
 @property(nonatomic, assign) int64_t nextNonTexturePlayerIdentifier;
+
+// PiP 用メソッドチャネル
+@property(nonatomic, strong) FlutterMethodChannel *pipChannel;
 @end
 
 @implementation FVPVideoPlayerPlugin
@@ -64,6 +67,46 @@
   [registrar registerViewFactory:factory withId:@"plugins.flutter.dev/video_player_ios"];
 #endif
   SetUpFVPAVFoundationVideoPlayerApi(registrar.messenger, instance);
+
+  // PiP 用 MethodChannel 設定
+  FlutterMethodChannel *pipChannel =
+      [FlutterMethodChannel methodChannelWithName:@"com.flash.flashdramaApp/pip"
+                                  binaryMessenger:registrar.messenger];
+  instance.pipChannel = pipChannel;
+
+  __weak FVPVideoPlayerPlugin *weakInstance = instance;
+  [pipChannel setMethodCallHandler:^(FlutterMethodCall *call, FlutterResult result) {
+    FVPVideoPlayerPlugin *strongInstance = weakInstance;
+    if (!strongInstance) {
+      result(nil);
+      return;
+    }
+
+#if TARGET_OS_IOS
+    if ([call.method isEqualToString:@"enterPiP"]) {
+      NSNumber *identifier = call.arguments[@"playerIdentifier"];
+      if (![identifier isKindOfClass:[NSNumber class]]) {
+        result(nil);
+        return;
+      }
+
+      FVPVideoPlayer *player = strongInstance.playersByIdentifier[identifier];
+      if (player) {
+        [[PiP sharedInstance] attachToPlayer:player];
+        [[PiP sharedInstance] startPiP];
+      }
+      result(nil);
+    } else if ([call.method isEqualToString:@"exitPiP"]) {
+      [[PiP sharedInstance] stopPiP];
+      [[PiP sharedInstance] detachCurrentPlayer];
+      result(nil);
+    } else {
+      result(FlutterMethodNotImplemented);
+    }
+#else
+    result(FlutterMethodNotImplemented);
+#endif
+  }];
 }
 
 - (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
@@ -94,6 +137,9 @@
       makeObjectsPerformSelector:@selector(disposeSansEventChannel)];
   [self.playersByIdentifier removeAllObjects];
   SetUpFVPAVFoundationVideoPlayerApi(registrar.messenger, nil);
+
+  [self.pipChannel setMethodCallHandler:nil];
+  self.pipChannel = nil;
 }
 
 - (int64_t)onPlayerSetup:(FVPVideoPlayer *)player {

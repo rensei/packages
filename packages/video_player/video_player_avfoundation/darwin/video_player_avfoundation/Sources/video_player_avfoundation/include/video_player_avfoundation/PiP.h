@@ -1,28 +1,30 @@
-// FLTVideoPlayer+PiP.h
-// Picture-in-Picture support for FLTVideoPlayer (iOS 16+).
+// PiP.h
+// video_player_avfoundation – iOS PiP helper
 
 #import <Foundation/Foundation.h>
 #import <AVKit/AVKit.h>
 
+@class FVPVideoPlayer;
+
 NS_ASSUME_NONNULL_BEGIN
 
-@class FLTVideoPlayer;
+@interface PiP : NSObject <AVPictureInPictureControllerDelegate>
 
-/// FLTVideoPlayer 向け Picture in Picture 拡張カテゴリ.
-/// PiP を開始/終了するための API を追加します。
-@interface FLTVideoPlayer (PictureInPicture) <AVPictureInPictureControllerDelegate>
++ (instancetype)sharedInstance;
 
-/// この端末・OS で PiP が利用可能かどうか。
-- (BOOL)isPictureInPictureSupported;
+@property(nonatomic, weak, readonly, nullable) FVPVideoPlayer *currentPlayer;
+@property(nonatomic, strong, readonly, nullable) AVPictureInPictureController *pipController;
 
-/// 現在 PiP がアクティブかどうか。
-- (BOOL)isPictureInPictureActive;
+@property(nonatomic, readonly) BOOL isPiPAvailable;
+@property(nonatomic, readonly) BOOL isPiPActive;
 
-/// PiP を開始する。
-- (void)startPictureInPicture;
+/// FVPVideoPlayer（platform view / texture どちらでも）を紐付ける
+- (void)attachToPlayer:(FVPVideoPlayer *)player;
+- (void)detachCurrentPlayer;
 
-/// PiP を終了する。
-- (void)stopPictureInPicture;
+/// PiP 開始・終了
+- (void)startPiP;
+- (void)stopPiP;
 
 @end
 
