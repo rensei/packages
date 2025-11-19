@@ -57,24 +57,6 @@
   self.pipLayer = nil;
 }
 
-- (UIWindow *)fvp_activeWindow {
-  for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-    if (scene.activationState == UISceneActivationStateForegroundActive &&
-        [scene isKindOfClass:[UIWindowScene class]]) {
-      UIWindowScene *windowScene = (UIWindowScene *)scene;
-      for (UIWindow *window in windowScene.windows) {
-        if (window.isKeyWindow) {
-          return window;
-        }
-      }
-      if (windowScene.windows.firstObject != nil) {
-        return windowScene.windows.firstObject;
-      }
-    }
-  }
-  return UIApplication.sharedApplication.windows.firstObject;
-}
-
 - (void)configureControllerForCurrentPlayer {
   if (!self.currentPlayer) {
     NSLog(@"[PiP] configureControllerForCurrentPlayer: currentPlayer is nil");
@@ -92,20 +74,12 @@
     return;
   }
 
-  // PiP 用の AVPlayerLayer を自前で管理する
+  // PiP 専用の AVPlayerLayer（画面には載せない）
   if (self.pipLayer == nil) {
     self.pipLayer = [AVPlayerLayer playerLayerWithPlayer:player];
     self.pipLayer.videoGravity = AVLayerVideoGravityResizeAspect;
-
-    UIWindow *window = [self fvp_activeWindow];
-    if (window) {
-      UIView *hostView = window.rootViewController.view;
-      [hostView.layer addSublayer:self.pipLayer];
-      self.pipLayer.frame = hostView.bounds;
-      NSLog(@"[PiP] configure: added pipLayer to hostView");
-    } else {
-      NSLog(@"[PiP] configure: active window not found");
-    }
+    // 見えないようにしておく（PiP のソースとしてのみ使用）
+    self.pipLayer.opacity = 0.0;
   } else {
     self.pipLayer.player = player;
   }
@@ -116,8 +90,13 @@
 
     self.pipController =
         [[AVPictureInPictureController alloc] initWithContentSource:contentSource];
-    self.pipController.delegate = self;
 
+    // ★ 自動 PiP 有効化（iOS 14.2+）
+    if (@available(iOS 14.2, *)) {
+      self.pipController.canStartPictureInPictureAutomaticallyFromInline = YES;
+    }
+
+    self.pipController.delegate = self;
     NSLog(@"[PiP] configure: created new PiP controller");
   } else {
     NSLog(@"[PiP] configure: reuse existing PiP controller");
@@ -126,6 +105,14 @@
 
 - (void)startPiP {
   NSLog(@"[PiP] startPiP called");
+
+  // フォアグラウンドのときだけ手動 PiP 開始を許可
+  UIApplicationState state = UIApplication.sharedApplication.applicationState;
+  NSLog(@"[PiP] applicationState = %ld", (long)state);
+  if (state != UIApplicationStateActive) {
+    NSLog(@"[PiP] startPiP blocked: app is not active (state=%ld)", (long)state);
+    return;
+  }
 
   if (!self.currentPlayer) {
     NSLog(@"[PiP] startPiP: currentPlayer is nil");
