@@ -12,6 +12,7 @@
 #import "./include/video_player_avfoundation/FVPFrameUpdater.h"
 #import "./include/video_player_avfoundation/FVPTextureBasedVideoPlayer.h"
 #import "./include/video_player_avfoundation/FVPVideoPlayer.h"
+#import "./include/video_player_avfoundation/PiP.h"
 // Relative path is needed for messages.g.h. See
 // https://github.com/flutter/packages/pull/6675/#discussion_r1591210702
 #import "./include/video_player_avfoundation/messages.g.h"
