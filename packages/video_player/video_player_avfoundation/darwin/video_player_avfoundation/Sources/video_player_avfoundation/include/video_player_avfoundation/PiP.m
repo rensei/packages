@@ -53,22 +53,21 @@
     return;
   }
 
-  // すでに同じ AVPlayer に対するコントローラがあるなら再利用
-  if (self.pipController && self.pipLayer.player == self.currentPlayer.player) {
-    return;
-  }
-
   AVPlayer *player = self.currentPlayer.player;
   if (!player) {
     return;
   }
 
-  // 既存の playerLayer があればそれを使う。なければ PiP 専用レイヤーを作成
-  AVPlayerLayer *layer = self.currentPlayer.playerLayer ?: [AVPlayerLayer playerLayerWithPlayer:player];
-  self.pipLayer = layer;
+  // PiP 用の AVPlayerLayer を自前で管理する
+  if (self.pipLayer == nil) {
+    self.pipLayer = [AVPlayerLayer playerLayerWithPlayer:player];
+    self.pipLayer.videoGravity = AVLayerVideoGravityResizeAspect;
+  } else {
+    self.pipLayer.player = player;
+  }
 
   AVPictureInPictureControllerContentSource *contentSource =
-      [[AVPictureInPictureControllerContentSource alloc] initWithPlayerLayer:layer];
+      [[AVPictureInPictureControllerContentSource alloc] initWithPlayerLayer:self.pipLayer];
 
   self.pipController =
       [[AVPictureInPictureController alloc] initWithContentSource:contentSource];
