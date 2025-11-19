@@ -152,4 +152,23 @@
   NSLog(@"[PiP] didStartPictureInPicture");
 }
 
-- (void)pictureInPictureContro
+- (void)pictureInPictureControllerDidStopPictureInPicture:
+    (AVPictureInPictureController *)pictureInPictureController {
+  NSLog(@"[PiP] didStopPictureInPicture");
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController
+    failedToStartPictureInPictureWithError:(NSError *)error {
+  NSLog(@"[PiP] failedToStartPictureInPictureWithError: %@", error);
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController
+restoreUserInterfaceForPictureInPictureStopWithCompletionHandler:
+    (void (^)(BOOL restored))completionHandler {
+  NSLog(@"[PiP] restoreUserInterfaceForPictureInPictureStop");
+  if (completionHandler) {
+    completionHandler(NO);
+  }
+}
+
+@end
