@@ -4,6 +4,7 @@
 #import "PiP.h"
 #import "FVPVideoPlayer.h"
 #import <AVKit/AVKit.h>
+#import <UIKit/UIKit.h>
 
 @interface PiP ()
 
@@ -56,6 +57,24 @@
   self.pipLayer = nil;
 }
 
+- (UIWindow *)fvp_activeWindow {
+  for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+    if (scene.activationState == UISceneActivationStateForegroundActive &&
+        [scene isKindOfClass:[UIWindowScene class]]) {
+      UIWindowScene *windowScene = (UIWindowScene *)scene;
+      for (UIWindow *window in windowScene.windows) {
+        if (window.isKeyWindow) {
+          return window;
+        }
+      }
+      if (windowScene.windows.firstObject != nil) {
+        return windowScene.windows.firstObject;
+      }
+    }
+  }
+  return UIApplication.sharedApplication.windows.firstObject;
+}
+
 - (void)configureControllerForCurrentPlayer {
   if (!self.currentPlayer) {
     NSLog(@"[PiP] configureControllerForCurrentPlayer: currentPlayer is nil");
@@ -78,9 +97,15 @@
     self.pipLayer = [AVPlayerLayer playerLayerWithPlayer:player];
     self.pipLayer.videoGravity = AVLayerVideoGravityResizeAspect;
 
-    // 一応フレームも入れておく（ゼロサイズだと不具合出るデバイスがある）
-    UIScreen *screen = [UIScreen mainScreen];
-    self.pipLayer.frame = screen.bounds;
+    UIWindow *window = [self fvp_activeWindow];
+    if (window) {
+      UIView *hostView = window.rootViewController.view;
+      [hostView.layer addSublayer:self.pipLayer];
+      self.pipLayer.frame = hostView.bounds;
+      NSLog(@"[PiP] configure: added pipLayer to hostView");
+    } else {
+      NSLog(@"[PiP] configure: active window not found");
+    }
   } else {
     self.pipLayer.player = player;
   }
@@ -126,11 +151,12 @@
         self.pipController.isPictureInPictureActive ? @"YES" : @"NO");
 
   dispatch_async(dispatch_get_main_queue(), ^{
-    if (!self.pipController.isPictureInPictureActive) {
+    if (!self.pipController.isPictureInPictureActive &&
+        self.pipController.isPictureInPicturePossible) {
       [self.pipController startPictureInPicture];
       NSLog(@"[PiP] startPiP: startPictureInPicture called");
     } else {
-      NSLog(@"[PiP] startPiP: already active");
+      NSLog(@"[PiP] startPiP: already active or not possible");
     }
   });
 }
