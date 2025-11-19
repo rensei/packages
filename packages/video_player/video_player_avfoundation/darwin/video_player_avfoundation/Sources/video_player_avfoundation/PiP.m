@@ -47,17 +47,17 @@ static const void *kFvpPipControllerKey = &kFvpPipControllerKey;
 
 #pragma mark - Public API
 
-- (BOOL)fvp_isPictureInPictureSupported {
+- (BOOL)isPictureInPictureSupported {
   // iOS 16+ 前提だが、一応サポート有無だけはチェックしておく
   return [AVPictureInPictureController isPictureInPictureSupported];
 }
 
-- (BOOL)fvp_isPictureInPictureActive {
+- (BOOL)isPictureInPictureActive {
   AVPictureInPictureController *controller = self.fvp_pipController;
   return controller.isPictureInPictureActive;
 }
 
-- (void)fvp_startPictureInPicture {
+- (void)startPictureInPicture {
   if (![self fvp_isPictureInPictureSupported]) {
     return;
   }
@@ -82,7 +82,7 @@ static const void *kFvpPipControllerKey = &kFvpPipControllerKey;
   }
 }
 
-- (void)fvp_stopPictureInPicture {
+- (void)stopPictureInPicture {
   AVPictureInPictureController *controller = self.fvp_pipController;
   if (controller.isPictureInPictureActive) {
     [controller stopPictureInPicture];
